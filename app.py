@@ -1,5 +1,24 @@
 import streamlit as st
+
+import tensorflow as tf
 from PIL import Image
+
+import threading
+from utils import utilities
+
+# thread safety setup
+MODEL_LOCK = threading.Lock()
+
+# -----------------( DL MODEL LOADING )-----------------
+@st.cache_resource
+def load_model():
+    """
+    Loads the model once gloabally and caches it across all sessions.
+    """
+    return tf.keras.models.load_model('/workspaces/Food-Sight/model/FoodSight.keras')
+
+# initializing model
+model = load_model()
 
 # -----------------( TITLE & HEADING )-----------------
 st.markdown(
@@ -60,11 +79,13 @@ if st.session_state['saved_image'] is None:
     camera_file = st.camera_input("Capture a Photo")
 
     # if either widget recieved a new file
-    active_input = uploaded_file or camera_file
+    active_input = camera_file if camera_file is not None else uploaded_file
 
     if active_input is not None:
         # save file to state, then force a fresh rerun
-        st.session_state['saved_image'] = active_input.read()
+        pil_image = Image.open(active_input)
+
+        st.session_state['saved_image'] = pil_image
         st.rerun()
 
 else:
@@ -75,4 +96,19 @@ else:
     # clare the image and bring the input elements back
     if st.button("Delete and Upload Another"):
         st.session_state['saved_image'] = None
-        st.rerun()    
+        st.rerun()
+
+    if st.button('Identify This'):
+        with st.spinner('Identifying...'):
+            # preprocessing image
+            processd_image = utilities.preprocess_image(st.session_state['saved_image'])
+
+            with MODEL_LOCK:
+                predictions = model.predict(processd_image)
+
+            top_5_preds = utilities.top_k_preds(predictions)
+
+            # output results
+            st.success('Identified!')
+            st.write('Raw model output:', top_5_preds)
+   
