@@ -1,21 +1,19 @@
-# 🎈 Blank app template
+# FoodSight
 
-A simple Streamlit app template for you to modify!
+Streamlit app for uploading or capturing a food image.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
+### Run locally
 
-### How to run it on your own machine
+1. Create and set up the virtual environment.
 
-1. Create a virtual environment and install the dependencies.
-
-   ```
+   ```bash
    python3 -m venv .venv
    .venv/bin/python -m pip install --upgrade pip
    .venv/bin/python -m pip install -r requirements.txt
    ```
 
-2. Run the app.
+2. Start the app.
 
-   ```
-   .venv/bin/streamlit run streamlit_app.py
+   ```bash
+   .venv/bin/streamlit run app.py --server.address=0.0.0.0 --server.port=8501
    ```

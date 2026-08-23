@@ -1,13 +1,12 @@
 [project]
-name = "blank-app-template"
+name = "foodsight"
 version = "0.1.0"
-description = "A simple Streamlit app template."
+description = "FoodSight Streamlit app."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "streamlit>=1.58.0",
-    "pandas>=2.0",
-    "numpy>=1.26",
+    "Pillow>=10.0",
 ]
 
 [tool.uv]
