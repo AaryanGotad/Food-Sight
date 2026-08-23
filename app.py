@@ -2,6 +2,7 @@ import streamlit as st
 
 import tensorflow as tf
 from PIL import Image
+from pathlib import Path
 
 import threading
 from utils import utilities
@@ -15,10 +16,15 @@ def load_model():
     """
     Loads the model once gloabally and caches it across all sessions.
     """
-    return tf.keras.models.load_model('/workspaces/Food-Sight/model/FoodSight.keras')
+    model_path = Path(__file__).resolve().parent / 'model' / 'FoodSight.keras'
+    return tf.keras.models.load_model(model_path)
 
 # initializing model
-model = load_model()
+try:
+    model = load_model()
+except Exception as exc:
+    st.error(f"Failed to load model: {exc}")
+    st.stop()
 
 # -----------------( TITLE & HEADING )-----------------
 st.markdown(
@@ -47,7 +53,7 @@ st.markdown(
     """,
     unsafe_allow_html=True)
 
-st.space('small')
+st.write("")
 
 # -----------------( IMAGE UPLOAD LOGIC )-----------------
 # Initializing persistent session state for the target image
