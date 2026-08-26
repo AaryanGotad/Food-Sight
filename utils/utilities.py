@@ -1,7 +1,12 @@
 import tensorflow as tf
-from PIL import Image
+# from PIL import Image
 import numpy as np
 from pathlib import Path
+
+class_names_path = Path(__file__).with_name('class_names.txt')
+    
+with class_names_path.open('r', encoding='utf-8') as file:
+    class_names = file.read().splitlines()
 
 def preprocess_image(pil_image) -> tf.Tensor:
     """
@@ -26,10 +31,6 @@ def preprocess_image(pil_image) -> tf.Tensor:
 
 
 def top_k_preds(preds, k=5):
-    class_names_path = Path(__file__).with_name('class_names.txt')
-    
-    with class_names_path.open('r', encoding='utf-8') as file:
-        class_names = file.read().splitlines()
 
     # getting probabilits and indices of top k preds
     top_k_values, top_k_indices = tf.math.top_k(preds[0], k=k)
@@ -42,12 +43,12 @@ def top_k_preds(preds, k=5):
     top_k = []
     for i in range(k):
         class_name = class_names[indices[i]]
-        confidence = float(predictions[i] * 100)
+        confidence = predictions[i]
 
         # appending as a dictionary to the list
         top_k.append({
             'label': class_name,
-            'confidence': round(confidence, 2)
+            'confidence': confidence
         })
 
     return top_k
