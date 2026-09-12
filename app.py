@@ -139,12 +139,13 @@ if class_names:
         options=["Select a dish..."] + list(formatted_classes.keys())
     )
     
-    # Handle sample selection from pills or selectbox
+    # Handle sample selection from the selectbox or pills. A searched class
+    # takes precedence over a previously selected popular sample.
     target_sample = None
-    if selected_pill:
-        target_sample = formatted_classes.get(selected_pill)
-    elif selected_class_formatted != "Select a dish...":
+    if selected_class_formatted != "Select a dish...":
         target_sample = formatted_classes.get(selected_class_formatted)
+    elif selected_pill:
+        target_sample = formatted_classes.get(selected_pill)
         
     if target_sample:
         sample_img = load_sample_image(target_sample)
