@@ -52,3 +52,16 @@ def top_k_preds(preds, k=5):
         })
 
     return top_k
+
+def determine_prediction_state(top_preds):
+    """Determines CONFIDENT, UNCERTAIN, or CONFUSED based on probabilities."""
+    p1 = top_preds[0]['Probability']
+    p2 = top_preds[1]['Probability'] if len(top_preds) > 1 else 0
+    margin = p1 - p2
+    
+    if p1 < 0.35:
+        return "CONFUSED"
+    elif margin < 0.15:
+        return "UNCERTAIN"
+    else:
+        return "CONFIDENT"
