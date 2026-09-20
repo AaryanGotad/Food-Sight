@@ -129,7 +129,15 @@ Renormalization changes only the reported values, not the model's ranking or its
 
 ## Model and Dataset
 
-FoodSight is intended for the 101 categories from Food-101, including:
+FoodSight uses a fine-tuned EfficientNet-B0 classifier trained on the [Food-101 dataset](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/). The project was motivated by the goal of exceeding DeepFood's reported 77.4% top-1 accuracy while gaining experience with a larger image-classification dataset than the earlier SILC project.
+
+### Dataset
+
+Food-101 contains 101 food categories. The training split contains 75,750 images, with 750 images per class. The official validation split contains 25,250 images, with 250 images per class. For the experiment documented here, 15% of that validation split, or 3,788 images, was used for validation during training. The downloaded dataset occupied approximately 4.65 GiB.
+
+Every image was resized to 224 x 224 pixels and cast from `uint8` to `float32`. Training data was shuffled with a buffer size of 1,000, batched in groups of 32, and prefetched with TensorFlow's `AUTOTUNE`. Validation data was batched and prefetched without shuffling.
+
+The model predicts the following 101 categories, among others:
 
 `apple_pie`, `baklava`, `bibimbap`, `cannoli`, `chicken_curry`, `chocolate_cake`, `french_fries`, `hamburger`, `ice_cream`, `lasagna`, `pizza`, `ramen`, `sushi`, `tacos`, `tiramisu`, `waffles`, and many others.
 
@@ -144,7 +152,40 @@ The model file is [`model/FoodSight.keras`](model/FoodSight.keras). A runtime in
 | Final activation | Softmax |
 | Runtime | TensorFlow / Keras |
 
-The repository contains the trained model and inference interface, but not the training notebook or training dataset. Consequently, this README documents how the deployed model behaves and does not claim training accuracy, validation accuracy, or a particular train/test split.
+### Training Setup
+
+Training used TensorFlow mixed precision with the `mixed_float16` policy where compatible hardware was available. The EfficientNet-B0 base model was loaded without its classification head and initially frozen. A new classification head was added with:
+
+- Random horizontal flips, rotations, translations, and contrast augmentation.
+- Global average pooling.
+- Dropout with a rate of `0.3`.
+- A dense layer with 101 outputs.
+- A float32 softmax activation for stable output probabilities.
+
+The model was compiled with sparse categorical cross-entropy and the Adam optimizer. The first feature-extraction stage ran for 5 epochs while the base model remained frozen. Its validation result was `72.78%` accuracy with a loss of `0.9974`.
+
+The second stage unfroze the base model for fine-tuning, with a maximum of 100 epochs. Training stopped after 26 epochs. The run used model checkpoints, early stopping after 3 validation-loss evaluations without improvement, and `ReduceLROnPlateau` with a factor of `0.2`, patience of 2, and a minimum learning rate of `1e-7`.
+
+### Fine-Tuning Results
+
+The reported results were measured on the 15% validation subset used during training, rather than on the complete Food-101 validation split:
+
+| Metric | Score |
+|---|---:|
+| Accuracy | 82.68% |
+| Precision | 82.59% |
+| Recall | 82.68% |
+| F1 score | 82.59% |
+
+The fine-tuned model therefore exceeded the 77.4% top-1 accuracy reported by DeepFood by 5.28 percentage points on this experiment's validation subset. These results should not be treated as a directly controlled reproduction of the DeepFood evaluation protocol.
+
+### Confusion Matrix
+
+The confusion matrix below shows the class-level behavior of the trained model on the evaluation used for this project. The axes follow the same class order as [`utils/class_names.txt`](utils/class_names.txt).
+
+![FoodSight confusion matrix](assets/docImages/confusion_matrix.png)
+
+The repository contains the trained model and inference interface, but not the training notebook or the original training dataset. The experiment details above are transcribed from the project's training notes; the saved model remains the artifact used by the Streamlit application.
 
 ## Repository Structure
 
@@ -158,6 +199,7 @@ Food-Sight/
 │   ├── class_names.txt       # 101 class names in model-output order
 │   └── utilities.py          # Preprocessing, top-k extraction, state logic
 ├── assets/
+│   ├── docImages/            # Documentation images, including the confusion matrix
 │   ├── samples/              # One JPG sample for each supported class
 │   └── silc_readme.md        # README from the earlier SILC project
 ├── requirements.txt          # Runtime dependencies
