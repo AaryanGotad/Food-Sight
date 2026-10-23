@@ -70,6 +70,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+st.image("assets/food_sight_cover.png", use_container_width=True)
+
 # -----------------( THREAD SAFETY & MODEL LOADING )-----------------
 MODEL_LOCK = threading.Lock()
 
@@ -112,10 +114,6 @@ def load_sample_image(class_raw_name):
 # -----------------( SESSION STATE INITIALIZATION )-----------------
 if "saved_image" not in st.session_state:
     st.session_state['saved_image'] = None
-
-# -----------------( 1. HERO SECTION )-----------------
-st.markdown("<h1 class='hero-title'>FoodSight</h1>", unsafe_allow_html=True)
-st.markdown("<p class='hero-subtitle'>See what's on your plate.</p>", unsafe_allow_html=True)
 
 # -----------------( 2. EXPLORE 101 CLASSES & SAMPLE SELECTOR )-----------------
 st.markdown("### Explore the Menu & Test Samples")
