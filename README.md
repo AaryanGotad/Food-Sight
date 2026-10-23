@@ -1,8 +1,17 @@
+![FoodSight Cover](assets/docImages/food_sight_cover.png)
+
 # FoodSight
 
-FoodSight is an image-classification app that answers a simple question: **what dish is in this image?** Upload a food photograph, choose one of the bundled examples, and FoodSight uses a fine-tuned EfficientNet-B0 model to rank the image against the 101 categories in the [Food-101 dataset](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/).
+FoodSight is an image-classification streamlit application that answers a simple question: **what dish is in this image?** Upload a food photograph, choose one of the bundled examples, and FoodSight uses a fine-tuned EfficientNet-B0 model to rank the image against the 101 categories in the [Food-101 dataset](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/).
 
 The app is built with Streamlit and TensorFlow. It is designed to make the prediction process inspectable rather than presenting a single unexplained label: the interface shows the resized image supplied to the model, the leading prediction, a confidence state, and a top-five probability breakdown.
+
+---
+
+## Live Demo
+The entire application is deployed on Streanlit Community Cloud, [check it out here!](https://jhx9yh6q73obk3cqkbsev6.streamlit.app/)
+
+---
 
 ## Features
 
@@ -16,6 +25,8 @@ The app is built with Streamlit and TensorFlow. It is designed to make the predi
 - Shows the resized model input beside the original image.
 - Uses Streamlit resource and data caching so the model and class list are not reloaded unnecessarily.
 - Protects inference with a lock, which keeps model access serialized if multiple Streamlit interactions reach prediction at once.
+
+---
 
 ## Live Workflow
 
@@ -44,6 +55,8 @@ There are two ways to provide an image:
 
 The repository contains 101 sample JPGs under `assets/samples/`, matching the 101 lines in `utils/class_names.txt`.
 
+<img src="assets/docImages/choose_img.png" style="width: 50%;">
+
 ### 2. Prepare the image
 
 Before inference, `utils.utilities.preprocess_image()`:
@@ -65,7 +78,15 @@ The app selects the five largest values with TensorFlow's `tf.math.top_k`. The t
 - **Confidence %**: the same value formatted as a percentage with two decimal places.
 - **Confidence Score**: the underlying probability-like value in the interval from 0 to 1.
 
+<img src="assets/docImages/pred1.png" style="width: 50%;">
+<br>
+<img src="assets/docImages/pred2.png" style="width: 50%;">
+
+---
+
 ## Understanding the Confidence State
+
+![confusion state cover](assets/docImages/confusion_state_cover.png)
 
 FoodSight does not treat every top prediction as equally persuasive. After extracting the top results, it calculates:
 
@@ -81,15 +102,19 @@ The current rules are:
 | `CONFUSED` | Top probability is below `0.35` | No class has a strong enough score to support a clear result. |
 | `UNCERTAIN` | Any other case | The leading class may be plausible, but the runner-up is close enough to show both. |
 
-These are application display rules, not a guarantee that the model is correct. The model was trained to choose among a fixed set of 101 dishes. An image of an unsupported dish, a poorly framed image, or a visually ambiguous dish will still receive a best guess because the classifier has no explicit `unknown food` output.
+<img src="assets/docImages/conf_pred1.png" style="width: 50%;">
+<br>
+<img src="assets/docImages/conf_pred2.png" style="width: 50%;">
+
+These are application display rules, **not** a guarantee that the model is correct. The model was trained to choose among a fixed set of 101 dishes. An image of an unsupported dish, a poorly framed image, or a visually ambiguous dish will **still** receive a best guess because the classifier has no explicit `unknown food` output.
+
+---
 
 ## Why Can Softmax Show `1.0` and Tiny Other Values?
 
 The saved model's final layer is a TensorFlow softmax activation. In exact mathematics, softmax is:
 
-$$
-\operatorname{softmax}(z_i) = \frac{e^{z_i}}{\sum_{j=1}^{101} e^{z_j}}
-$$
+<img src="assets/docImages/softmax.png" style="margin-left: 15%; width: 50%;">
 
 where `z` is the vector of raw model scores, or logits. The ideal probabilities are non-negative and sum to one.
 
@@ -115,27 +140,21 @@ print(outputs.sum())
 print(outputs.max())
 ```
 
-The saved model has a softmax output, so the sum should be very close to `1.0`; a tiny deviation is expected from floating-point computation. To inspect the logits themselves, the model would need to expose or reconstruct the layer immediately before the final softmax. The current inference app does not return logits.
+The saved model has a softmax output, so the sum should be very close to `1.0`; a tiny deviation is expected from floating-point computation.
 
-### Can it be prevented?
-
-This numerical effect can be reduced by renormalizing a copied output vector before displaying it:
-
-```python
-probabilities = outputs / outputs.sum()
-```
-
-Renormalization changes only the reported values, not the model's ranking or its learned behavior. It should not be confused with solving overconfidence. If confidence calibration is a goal for a future training iteration, possible approaches include label smoothing, temperature scaling on a validation set, or training with a broader set of out-of-domain images. Those changes require a training and evaluation workflow; they are not part of this inference-only repository.
+---
 
 ## Model and Dataset
 
-FoodSight uses a fine-tuned EfficientNet-B0 classifier trained on the [Food-101 dataset](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/). The project was motivated by the goal of exceeding DeepFood's reported 77.4% top-1 accuracy while gaining experience with a larger image-classification dataset than the earlier SILC project.
+FoodSight uses a fine-tuned EfficientNet-B0 classifier trained on the [Food-101 dataset](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/). The project was motivated by the goal of exceeding [DeepFood](https://www.researchgate.net/publication/304163308_DeepFood_Deep_Learning-Based_Food_Image_Recognition_for_Computer-Aided_Dietary_Assessment)'s reported 77.4% top-1 accuracy while gaining experience with a larger image-classification dataset.
 
 ### Dataset
 
-Food-101 contains 101 food categories. The training split contains 75,750 images, with 750 images per class. The official validation split contains 25,250 images, with 250 images per class. For the experiment documented here, 15% of that validation split, or 3,788 images, was used for validation during training. The downloaded dataset occupied approximately 4.65 GiB.
+![dataset cover](assets/docImages/dataset_cover.png)
 
-Every image was resized to 224 x 224 pixels and cast from `uint8` to `float32`. Training data was shuffled with a buffer size of 1,000, batched in groups of 32, and prefetched with TensorFlow's `AUTOTUNE`. Validation data was batched and prefetched without shuffling.
+Food-101 contains 101 food categories. The training split contains 75,750 images, with 750 images per class. The official validation split contains 25,250 images, with 250 images per class. For my experiments, 15% of that validation split, or 3,788 images, was used for validation during training. The downloaded dataset occupied approximately 4.65 GiB, sourced from `TensorFlow Datasets`.
+
+Every image was resized to 224 x 224 pixels and cast from `uint8` to `float32`. Training data was shuffled with a buffer size of 1,000, batched in groups of 32, and prefetched with TensorFlow's `AUTOTUNE`. Validation data was batched and prefetched without shuffling to keep experiment result comparisons consistent.
 
 The model predicts the following 101 categories, among others:
 
@@ -162,7 +181,7 @@ Training used TensorFlow mixed precision with the `mixed_float16` policy where c
 - A dense layer with 101 outputs.
 - A float32 softmax activation for stable output probabilities.
 
-The model was compiled with sparse categorical cross-entropy and the Adam optimizer. The first feature-extraction stage ran for 5 epochs while the base model remained frozen. Its validation result was `72.78%` accuracy with a loss of `0.9974`.
+The model was compiled with `sparse categorical cross-entropy` loss and the `Adam` optimizer. The first feature-extraction stage ran for 5 epochs while the base model remained frozen. Its validation result was `72.78%` accuracy with a loss of `0.9974`.
 
 The second stage unfroze the base model for fine-tuning, with a maximum of 100 epochs. Training stopped after 26 epochs. The run used model checkpoints, early stopping after 3 validation-loss evaluations without improvement, and `ReduceLROnPlateau` with a factor of `0.2`, patience of 2, and a minimum learning rate of `1e-7`.
 
@@ -176,8 +195,9 @@ The reported results were measured on the 15% validation subset used during trai
 | Precision | 82.59% |
 | Recall | 82.68% |
 | F1 score | 82.59% |
+| Loss | 0.6266 |
 
-The fine-tuned model therefore exceeded the 77.4% top-1 accuracy reported by DeepFood by 5.28 percentage points on this experiment's validation subset. These results should not be treated as a directly controlled reproduction of the DeepFood evaluation protocol.
+The fine-tuned model therefore exceeded the 77.4% top-1 accuracy reported by [DeepFood](https://www.researchgate.net/publication/304163308_DeepFood_Deep_Learning-Based_Food_Image_Recognition_for_Computer-Aided_Dietary_Assessment) by 5.28 percentage points on this experiment's validation subset. These results should not be treated as a directly controlled reproduction of the DeepFood evaluation protocol.
 
 ### Confusion Matrix
 
@@ -185,7 +205,14 @@ The confusion matrix below shows the class-level behavior of the trained model o
 
 ![FoodSight confusion matrix](assets/docImages/confusion_matrix.png)
 
-The repository contains the trained model and inference interface, but not the training notebook or the original training dataset. The experiment details above are transcribed from the project's training notes; the saved model remains the artifact used by the Streamlit application.
+**Key Observations:**
+
+*   **Strong Diagonal Performance:** The prominent, solid dark blue diagonal line from the top-left to the bottom-right visually confirms that the model correctly predicts the true label across the vast majority of the 101 classes. This aligns with the model's high 82.68% validation accuracy.
+*   **Normalized Evaluation:** The matrix is normalized on a 0.0 to 1.0 scale, representing the percentage of images correctly classified per class. The consistently dark diagonal indicates that the model's accuracy is well-distributed and balanced, rather than relying heavily on a few dominant classes.
+*   **Sparse Misclassifications:** The pale, light blue off-diagonal spots indicate occasional misclassifications. Because there are no heavily darkened off-diagonal clusters, the EfficientNet-B0 model does not exhibit systemic failure modes or extreme bias toward guessing a single incorrect dish.
+*   **Expected Visual Ambiguity:** The scattered off-diagonal noise reflects the inherent difficulty of the Food-101 dataset, where dishes with similar plating, textures, and colors (e.g., chocolate cake versus chocolate mousse) naturally share visual features.
+
+---
 
 ## Repository Structure
 
@@ -208,6 +235,8 @@ Food-Sight/
 ├── LICENSE
 └── README.md
 ```
+
+---
 
 ## Local Setup
 
@@ -237,6 +266,8 @@ The dependency set includes Streamlit, Pillow, TensorFlow CPU, and NumPy. The pr
 
 Open [http://localhost:8501](http://localhost:8501) in a browser. On first load, Streamlit loads and caches the Keras model. CPU-only inference can take a little longer on the first prediction while TensorFlow initializes.
 
+---
+
 ## API and Inference Notes
 
 FoodSight is currently a Streamlit application, not a separate REST API. Predictions are made inside the Streamlit process when the user presses **Identify This**.
@@ -251,6 +282,8 @@ top_predictions = utilities.top_k_preds(predictions)
 
 `top_k_preds()` returns five dictionaries with a `label` and a raw `confidence` value. The UI then keeps the raw value as `Probability` and converts a copy to a percentage for presentation.
 
+---
+
 ## Limitations
 
 - **Fixed label set:** The classifier can only choose among 101 Food-101 categories. It cannot reliably identify a dish outside those categories.
@@ -259,17 +292,34 @@ top_predictions = utilities.top_k_preds(predictions)
 - **Framing and image quality:** Heavy cropping, poor lighting, packaging, clutter, or a dish occupying only a small part of the image can reduce performance.
 - **Resize information loss:** Every image is resized to 224 x 224, so very small details may disappear or become distorted.
 - **Confidence calibration:** The displayed score is the model's softmax output, not a formally calibrated probability of correctness.
-- **Inference-only repository:** Training scripts, experiment logs, evaluation metrics, and dataset files are not included here.
+
+---
 
 ## Good Input Practices
 
-For the most useful result:
+To give FoodSight best possible chances to see what's on your plate:
 
 - Keep the dish as the main subject and place it near the center.
 - Use clear, well-lit images with enough visible surface area.
 - Avoid strong obstructions such as hands, wrappers, or utensils covering most of the food.
 - Choose an angle that exposes the dish's characteristic shape and texture.
 - Treat `CONFUSED` and `UNCERTAIN` results as prompts to inspect the top-five alternatives, not as definitive identifications.
+
+---
+
+## Acknowledgement
+
+FoodSight was made possible by the following open-source projects, datasets, and resources:
+
+- The [Food-101 dataset](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/) by Lukas Bossard, Matthieu Guillaumin, and Luc Van Gool, which provides the 101 food categories and images used for training and evaluation.
+- [TensorFlow Datasets](https://www.tensorflow.org/datasets), used to obtain and prepare the Food-101 data during the training workflow.
+- [TensorFlow](https://www.tensorflow.org/) and [Keras](https://keras.io/), which provide the model-training and inference frameworks.
+- [EfficientNet](https://arxiv.org/abs/1905.11946), specifically EfficientNet-B0, which provides the image-classification backbone used by FoodSight.
+- [Streamlit](https://streamlit.io/), which powers the interactive web application and its deployment workflow.
+- [Pillow](https://python-pillow.org/) and [NumPy](https://numpy.org/), which support image loading and input preparation.
+- [DeepFood](https://www.researchgate.net/publication/304163308_DeepFood_Deep_Learning-Based_Food_Image_Recognition_for_Computer-Aided_Dietary_Assessment), whose reported results provided a reference point for the project.
+
+---
 
 ## License
 

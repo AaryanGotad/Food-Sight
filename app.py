@@ -305,7 +305,32 @@ with guide_col2:
     * **Pattern Recognition:** The model learns pixel patterns, not ingredients or taste.
     """)
 
-# -----------------( 7. FOOTER )-----------------
+# -----------------( 7. ABOUT FOODSIGHT )-----------------
+st.divider()
+st.markdown("### About FoodSight")
+st.caption("An educational image-classification project built to make model predictions easier to inspect.")
+
+about_col1, about_col2 = st.columns(2)
+
+with about_col1:
+    st.markdown("""
+    **What it does**
+
+    FoodSight identifies food images against the 101 categories in the [Food-101 dataset](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/). It shows the resized model input, the leading prediction, and the top five results so each answer can be explored rather than treated as a guarantee.
+
+    The classifier cannot identify every dish, and its confidence score is not a calibrated probability of correctness.
+    """)
+
+with about_col2:
+    st.markdown("""
+    **How it was built**
+
+    The app uses [Streamlit](https://streamlit.io/) for the interface and [TensorFlow](https://www.tensorflow.org/) with [Keras](https://keras.io/) for inference. Its fine-tuned [EfficientNet-B0](https://arxiv.org/abs/1905.11946) model receives RGB images resized to 224 × 224 pixels.
+
+    Image preparation is supported by [Pillow](https://python-pillow.org/) and [NumPy](https://numpy.org/). Training data was prepared with [TensorFlow Datasets](https://www.tensorflow.org/datasets).
+    """)
+
+# -----------------( 8. FOOTER )-----------------
 st.markdown("""
     <div class="footer">
         <strong>FoodSight</strong><br>
