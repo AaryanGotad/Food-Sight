@@ -1,4 +1,4 @@
-![FoodSight Cover](assets/docImages/food_sight_cover.png)
+![FoodSight Cover](assets/food_sight_cover.png)
 
 # FoodSight
 
