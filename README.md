@@ -2,35 +2,36 @@
 
 # FoodSight
 
-FoodSight is an image-classification streamlit application that answers a simple question: **what dish is in this image?** Upload a food photograph, choose one of the bundled examples, and FoodSight uses a fine-tuned EfficientNet-B0 model to rank the image against the 101 categories in the [Food-101 dataset](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/).
+FoodSight answers one simple question: **what dish is in this photo?** You upload a food photo (or pick one of the bundled examples), and FoodSight tells you which of the 101 dishes from the [Food-101 dataset](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/) it looks most like. Under the hood, it's a pretrained EfficientNet-B0 model that I fine-tuned on food photos.
 
-The app is built with Streamlit and TensorFlow. It is designed to make the prediction process inspectable rather than presenting a single unexplained label: the interface shows the resized image supplied to the model, the leading prediction, a confidence state, and a top-five probability breakdown.
+I built the app with Streamlit and TensorFlow. I didn't want it to just show a single label with no explanation, so it also shows you what the model actually saw: the resized image, its top guess, how confident it is, and its top five guesses.
 
 ---
 
 ## Live Demo
-The entire application is deployed on Streanlit Community Cloud, [check it out here!](https://jhx9yh6q73obk3cqkbsev6.streamlit.app/)
+
+The whole app is deployed on Streamlit Community Cloud, [check it out here!](https://jhx9yh6q73obk3cqkbsev6.streamlit.app/)
 
 ---
 
 ## Features
 
-- Classifies images into 101 Food-101 dish categories.
-- Accepts PNG, JPG, and JPEG uploads.
-- Includes one local sample image for every supported class.
-- Provides quick sample buttons for popular dishes such as pizza, sushi, ramen, and tacos.
-- Resizes every input to the model's required 224 x 224 RGB tensor.
-- Displays the model's top prediction and top-five outputs.
-- Labels results as `CONFIDENT`, `UNCERTAIN`, or `CONFUSED` using the prediction probability and the gap between the first two predictions.
-- Shows the resized model input beside the original image.
-- Uses Streamlit resource and data caching so the model and class list are not reloaded unnecessarily.
-- Protects inference with a lock, which keeps model access serialized if multiple Streamlit interactions reach prediction at once.
+- Recognizes 101 dishes from Food-101
+- Accepts PNG, JPG, and JPEG uploads
+- Comes with a sample image for every dish, handy if you don't have a photo nearby
+- Has quick buttons for popular dishes like pizza, sushi, ramen, and tacos
+- Resizes every image to 224 x 224 RGB, the size the model expects
+- Shows the top prediction and the top five guesses
+- Labels each result `CONFIDENT`, `UNCERTAIN`, or `CONFUSED`, based on the top probability and the gap between the first two guesses
+- Shows the resized image the model received next to your original
+- Caches the model and the class list, so they're only loaded once
+- Wraps prediction in a lock, so if several interactions reach it at once, they take turns instead of colliding
 
 ---
 
-## Live Workflow
+## How It Works
 
-The prediction flow is:
+Here's what happens between picking an image and seeing a result:
 
 ```mermaid
 flowchart TD
@@ -48,39 +49,39 @@ flowchart TD
 
 ### 1. Choose an image
 
-There are two ways to provide an image:
+There are two ways to give FoodSight an image:
 
-- Upload a PNG, JPG, or JPEG through the file uploader.
-- Select a dish from the searchable list or popular sample pills, then load its bundled sample image.
+- Upload a PNG, JPG, or JPEG with the file uploader.
+- Pick a dish from the searchable list or the popular-dish buttons, then load its bundled sample image.
 
-The repository contains 101 sample JPGs under `assets/samples/`, matching the 101 lines in `utils/class_names.txt`.
+I put one sample JPG for each of the 101 dishes under `assets/samples/`, matching the 101 lines in `utils/class_names.txt`.
 
-<img src="assets/docImages/choose_img.png" style="width: 50%;">
+<img src="assets/docImages/choose_img.png" alt="Choosing an image in FoodSight" style="width: 50%;">
 
 ### 2. Prepare the image
 
-Before inference, `utils.utilities.preprocess_image()`:
+Before the image goes to the model, `utils.utilities.preprocess_image()` does five small things:
 
-1. Converts non-RGB images, including grayscale images and images with transparency, to RGB.
-2. Converts the PIL image into a TensorFlow tensor.
+1. Converts the image to RGB if it isn't already (this covers grayscale images and images with transparency).
+2. Turns the PIL image into a TensorFlow tensor.
 3. Resizes it to 224 x 224 pixels.
 4. Casts the pixel values to `float32`.
-5. Adds a batch dimension, producing a tensor with shape `(1, 224, 224, 3)`.
+5. Adds a batch dimension, so the final shape is `(1, 224, 224, 3)`.
 
-The app displays a visual 224 x 224 preview so it is clear what spatial representation reaches the classifier. The preview is a resized image representation; the actual tensor is the float32 tensor returned by the preprocessing function.
+The app also shows a 224 x 224 preview, so you can see what the model is working with. The preview is just for you to look at. What the model actually receives is the `float32` tensor from the preprocessing function.
 
 ### 3. Generate predictions
 
-`model/FoodSight.keras` returns 101 values, one for each class in `utils/class_names.txt`. The class index is important: the output at index `i` is interpreted using the class name at line `i` in that file.
+`model/FoodSight.keras` returns 101 numbers, one for each dish in `utils/class_names.txt`. The order matters: the number at position `i` belongs to the dish on line `i` of that file.
 
-The app selects the five largest values with TensorFlow's `tf.math.top_k`. The table exposes both:
+The app picks the five largest numbers with TensorFlow's `tf.math.top_k`. The results table shows each of them in two ways:
 
-- **Confidence %**: the same value formatted as a percentage with two decimal places.
-- **Confidence Score**: the underlying probability-like value in the interval from 0 to 1.
+- **Confidence %**: the value as a percentage, with two decimal places.
+- **Confidence Score**: the same value as a number between 0 and 1.
 
-<img src="assets/docImages/pred1.png" style="width: 50%;">
+<img src="assets/docImages/pred1.png" alt="Prediction results, first example" style="width: 50%;">
 <br>
-<img src="assets/docImages/pred2.png" style="width: 50%;">
+<img src="assets/docImages/pred2.png" alt="Prediction results, second example" style="width: 50%;">
 
 ---
 
@@ -88,50 +89,51 @@ The app selects the five largest values with TensorFlow's `tf.math.top_k`. The t
 
 ![confusion state cover](assets/docImages/confusion_state_cover.png)
 
-FoodSight does not treat every top prediction as equally persuasive. After extracting the top results, it calculates:
+FoodSight doesn't treat every top guess as equally convincing. After finding the top results, it works out how far ahead the first guess is of the second:
 
 ```text
 margin = probability of first prediction - probability of second prediction
 ```
 
-The current rules are:
+Here are the current rules:
 
-| State | Rule | Meaning |
+| State | Rule | What it means |
 |---|---|---|
-| `CONFIDENT` | Top probability is at least `0.35` and the margin is at least `0.15` | One class is sufficiently strong and clearly ahead of the runner-up. |
-| `CONFUSED` | Top probability is below `0.35` | No class has a strong enough score to support a clear result. |
-| `UNCERTAIN` | Any other case | The leading class may be plausible, but the runner-up is close enough to show both. |
+| `CONFIDENT` | The top probability is at least `0.35` and the margin is at least `0.15` | One dish is strong enough and clearly ahead of the runner-up. |
+| `CONFUSED` | The top probability is below `0.35` | No dish scored high enough to give a clear answer. |
+| `UNCERTAIN` | Anything else | The top guess may be right, but the runner-up is close enough that it's worth looking at both. |
 
-<img src="assets/docImages/conf_pred1.png" style="width: 50%;">
+<img src="assets/docImages/conf_pred1.png" alt="Confidence state, first example" style="width: 50%;">
 <br>
-<img src="assets/docImages/conf_pred2.png" style="width: 50%;">
+<img src="assets/docImages/conf_pred2.png" alt="Confidence state, second example" style="width: 50%;">
 
-These are application display rules, **not** a guarantee that the model is correct. The model was trained to choose among a fixed set of 101 dishes. An image of an unsupported dish, a poorly framed image, or a visually ambiguous dish will **still** receive a best guess because the classifier has no explicit `unknown food` output.
+These are display rules I chose for the app, **not** a guarantee that the model is right. The model learned to choose among 101 dishes, and it has no "I don't know this food" option. So a photo of a dish it hasn't learned, a badly framed photo, or a dish that looks a lot like another one will **still** get a best guess.
 
 ---
 
 ## Why Can Softmax Show `1.0` and Tiny Other Values?
 
-The saved model's final layer is a TensorFlow softmax activation. In exact mathematics, softmax is:
+The model's last layer is a softmax. It turns the model's raw scores (called logits) into numbers between 0 and 1 that should add up to 1, so you can read them as probabilities. This is the formula:
 
-<img src="assets/docImages/softmax.png" style="margin-left: 15%; width: 50%;">
+<img src="assets/docImages/softmax.png" alt="Softmax formula" style="margin-left: 15%; width: 50%;">
 
-where `z` is the vector of raw model scores, or logits. The ideal probabilities are non-negative and sum to one.
+Here, `z` is the list of raw scores.
 
-For a very confident prediction, the winning logit can be much larger than the others. After the usual numerically stable subtraction of the largest logit, the winning term is approximately `1` and the remaining exponential terms can be extremely small, for example `10^-4` or `10^-5`.
+Once in a while you might see the top guess at exactly `1.0`, the others at tiny values, and a total that comes out slightly above 1. That looks wrong, but it's just how computers handle decimals:
 
-The model runs with finite-precision floating-point arithmetic rather than exact real numbers. When the denominator is accumulated, contributions that are small compared with the precision of the current value can be rounded away. The winning output can therefore be stored as exactly `1.0`, while the losing outputs remain representable as small positive numbers. Adding the stored values may then produce a result slightly greater than one.
+- When the model is very sure, its winning raw score is much bigger than the rest. After softmax, the winner is about `1`, and the others are really small, something like `10^-4` or `10^-5`.
+- Computers store numbers with limited precision (`float32` here), so tiny pieces can get rounded away when they're added together. The winner can end up stored as exactly `1.0`, while the losers stay as small positive numbers. Add the stored values up, and you can land a hair above 1.
 
-That observation does **not** mean the model has produced a mathematically valid probability distribution with a total greater than one. It means the computed float32 values contain a small numerical normalization error. It is especially visible for overconfident predictions because the gap between the winning logit and the other logits is large.
+That doesn't mean the model is producing broken probabilities. It's a tiny rounding error, and it shows up most when the model is very confident.
 
-There are two additional display details worth keeping in mind:
+Two more display details to keep in mind:
 
-- The interface shows only the top five of 101 outputs. Their displayed values are not expected to add up to 100% because the other 96 classes are omitted.
-- Percentages are rounded to two decimal places, so the displayed table can differ slightly from the underlying values used by the progress bars and state logic.
+- The interface only shows the top five of the 101 outputs. Those five aren't expected to add up to 100%, because the other 96 dishes are left out.
+- Percentages are rounded to two decimal places, so the table can differ slightly from the exact values behind the progress bars and the confidence state.
 
-### How to investigate it
+### Want to check it yourself?
 
-The current app exposes the raw top-five scores in the **Raw Model Outputs** popover. For a deeper diagnosis, inspect the complete model output before selecting the top five and compare:
+The **Raw Model Outputs** popover in the app shows the raw top-five scores. To dig deeper, look at the full output before the top five are picked:
 
 ```python
 outputs = model.predict(processed_image, verbose=0)[0]
@@ -140,29 +142,29 @@ print(outputs.sum())
 print(outputs.max())
 ```
 
-The saved model has a softmax output, so the sum should be very close to `1.0`; a tiny deviation is expected from floating-point computation.
+The last layer is a softmax, so the sum should be very close to `1.0`. A tiny difference is normal.
 
 ---
 
 ## Model and Dataset
 
-FoodSight uses a fine-tuned EfficientNet-B0 classifier trained on the [Food-101 dataset](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/). The project was motivated by the goal of exceeding [DeepFood](https://www.researchgate.net/publication/304163308_DeepFood_Deep_Learning-Based_Food_Image_Recognition_for_Computer-Aided_Dietary_Assessment)'s reported 77.4% top-1 accuracy while gaining experience with a larger image-classification dataset.
+FoodSight is an EfficientNet-B0 classifier, fine-tuned on the [Food-101 dataset](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/). I started this project to try to beat [DeepFood](https://www.researchgate.net/publication/304163308_DeepFood_Deep_Learning-Based_Food_Image_Recognition_for_Computer-Aided_Dietary_Assessment)'s reported 77.4% top-1 accuracy, and to get some experience with a larger image-classification dataset.
 
 ### Dataset
 
 ![dataset cover](assets/docImages/dataset_cover.png)
 
-Food-101 contains 101 food categories. The training split contains 75,750 images, with 750 images per class. The official validation split contains 25,250 images, with 250 images per class. For my experiments, 15% of that validation split, or 3,788 images, was used for validation during training. The downloaded dataset occupied approximately 4.65 GiB, sourced from `TensorFlow Datasets`.
+Food-101 has 101 food categories. The training split has 75,750 images (750 per class), and the official validation split has 25,250 images (250 per class). I used 15% of that validation split, which is 3,788 images, for validation during training. The download was about 4.65 GiB, from `TensorFlow Datasets`.
 
-Every image was resized to 224 x 224 pixels and cast from `uint8` to `float32`. Training data was shuffled with a buffer size of 1,000, batched in groups of 32, and prefetched with TensorFlow's `AUTOTUNE`. Validation data was batched and prefetched without shuffling to keep experiment result comparisons consistent.
+Every image was resized to 224 x 224 pixels and cast from `uint8` to `float32`. I shuffled the training data with a buffer size of 1,000, batched it in groups of 32, and prefetched it with TensorFlow's `AUTOTUNE` (so the next batch is getting ready while the current one trains). The validation data was batched and prefetched but not shuffled, so results stay comparable between experiments.
 
-The model predicts the following 101 categories, among others:
+The model predicts 101 dishes, including:
 
-`apple_pie`, `baklava`, `bibimbap`, `cannoli`, `chicken_curry`, `chocolate_cake`, `french_fries`, `hamburger`, `ice_cream`, `lasagna`, `pizza`, `ramen`, `sushi`, `tacos`, `tiramisu`, `waffles`, and many others.
+`apple_pie`, `baklava`, `bibimbap`, `cannoli`, `chicken_curry`, `chocolate_cake`, `french_fries`, `hamburger`, `ice_cream`, `lasagna`, `pizza`, `ramen`, `sushi`, `tacos`, `tiramisu`, `waffles`, and many more.
 
-The complete class order is stored in [`utils/class_names.txt`](utils/class_names.txt). It must remain aligned with the model's output indices. Renaming, reordering, or deleting entries will make otherwise valid predictions display the wrong dish name.
+The full list lives in [`utils/class_names.txt`](utils/class_names.txt), in the same order as the model's outputs. Please don't rename, reorder, or delete entries. If you do, perfectly good predictions will show the wrong dish name.
 
-The model file is [`model/FoodSight.keras`](model/FoodSight.keras). A runtime inspection of the saved artifact confirms:
+The model file is [`model/FoodSight.keras`](model/FoodSight.keras). I inspected the saved file, and here's what it contains:
 
 | Property | Value |
 |---|---|
@@ -173,21 +175,32 @@ The model file is [`model/FoodSight.keras`](model/FoodSight.keras). A runtime in
 
 ### Training Setup
 
-Training used TensorFlow mixed precision with the `mixed_float16` policy where compatible hardware was available. The EfficientNet-B0 base model was loaded without its classification head and initially frozen. A new classification head was added with:
+I trained the model in two stages. In the first, I kept the pretrained EfficientNet-B0 frozen and trained only a new classification head on top of it. In the second, I unfroze it and fine-tuned the whole thing. A few terms might be new, so I explain them right after the details.
 
-- Random horizontal flips, rotations, translations, and contrast augmentation.
-- Global average pooling.
-- Dropout with a rate of `0.3`.
-- A dense layer with 101 outputs.
-- A float32 softmax activation for stable output probabilities.
+For the first stage, I loaded EfficientNet-B0 without its classification head and froze it. I added a new head with:
 
-The model was compiled with `sparse categorical cross-entropy` loss and the `Adam` optimizer. The first feature-extraction stage ran for 5 epochs while the base model remained frozen. Its validation result was `72.78%` accuracy with a loss of `0.9974`.
+- Random horizontal flips, rotations, translations, and contrast changes (data augmentation)
+- Global average pooling
+- Dropout with a rate of `0.3`
+- A dense layer with 101 outputs
+- A `float32` softmax activation, so the output probabilities stay stable
 
-The second stage unfroze the base model for fine-tuning, with a maximum of 100 epochs. Training stopped after 26 epochs. The run used model checkpoints, early stopping after 3 validation-loss evaluations without improvement, and `ReduceLROnPlateau` with a factor of `0.2`, patience of 2, and a minimum learning rate of `1e-7`.
+Training used TensorFlow's `mixed_float16` mixed precision policy wherever the hardware supported it. I compiled the model with `sparse categorical cross-entropy` loss and the `Adam` optimizer. The first stage ran for 5 epochs with the base model frozen, and ended with `72.78%` validation accuracy and a loss of `0.9974`.
+
+For the second stage, I unfroze the base model and allowed up to 100 epochs. Training stopped on its own after 26. I used model checkpoints, early stopping (after 3 validation-loss evaluations without improvement), and `ReduceLROnPlateau` with a factor of `0.2`, a patience of 2, and a minimum learning rate of `1e-7`.
+
+#### The terms, in plain words
+
+- **Frozen / fine-tuning:** A frozen model's weights don't change during training. First I trained only the new head, then I unfroze the base model and nudged all of it a little, so it could adapt to food photos.
+- **Data augmentation:** Random flips, rotations, shifts, and contrast changes make each training photo look a bit different every time, so the model doesn't just memorize the exact images.
+- **Dropout:** Randomly switches off 30% of the units in a layer during training, so the model can't lean too heavily on any single one.
+- **Mixed precision:** Uses lower-precision numbers where it's safe, which makes training faster and lighter on memory. That's why the final softmax is kept in `float32`.
+- **Early stopping:** Stops training once the validation loss hasn't improved for 3 checks in a row.
+- **`ReduceLROnPlateau`:** When progress stalls for 2 epochs, the learning rate gets multiplied by 0.2, so the model takes smaller steps as it gets close to a good solution.
 
 ### Fine-Tuning Results
 
-The reported results were measured on the 15% validation subset used during training, rather than on the complete Food-101 validation split:
+I measured these results on the 15% validation subset I used during training, not on the complete Food-101 validation split. That's the same subset the checkpoints and early stopping watched, so treat the numbers as an encouraging sign, not a final benchmark.
 
 | Metric | Score |
 |---|---:|
@@ -197,20 +210,20 @@ The reported results were measured on the 15% validation subset used during trai
 | F1 score | 82.59% |
 | Loss | 0.6266 |
 
-The fine-tuned model therefore exceeded the 77.4% top-1 accuracy reported by [DeepFood](https://www.researchgate.net/publication/304163308_DeepFood_Deep_Learning-Based_Food_Image_Recognition_for_Computer-Aided_Dietary_Assessment) by 5.28 percentage points on this experiment's validation subset. These results should not be treated as a directly controlled reproduction of the DeepFood evaluation protocol.
+That's 5.28 percentage points above the 77.4% top-1 accuracy reported by [DeepFood](https://www.researchgate.net/publication/304163308_DeepFood_Deep_Learning-Based_Food_Image_Recognition_for_Computer-Aided_Dietary_Assessment). It isn't a like-for-like comparison, though. I didn't reproduce their evaluation setup, so please don't read it as a controlled head-to-head.
 
 ### Confusion Matrix
 
-The confusion matrix below shows the class-level behavior of the trained model on the evaluation used for this project. The axes follow the same class order as [`utils/class_names.txt`](utils/class_names.txt).
+The confusion matrix shows how the model does on each dish. Dishes appear in the same order as [`utils/class_names.txt`](utils/class_names.txt).
 
 ![FoodSight confusion matrix](assets/docImages/confusion_matrix.png)
 
-**Key Observations:**
+**What I notice:**
 
-*   **Strong Diagonal Performance:** The prominent, solid dark blue diagonal line from the top-left to the bottom-right visually confirms that the model correctly predicts the true label across the vast majority of the 101 classes. This aligns with the model's high 82.68% validation accuracy.
-*   **Normalized Evaluation:** The matrix is normalized on a 0.0 to 1.0 scale, representing the percentage of images correctly classified per class. The consistently dark diagonal indicates that the model's accuracy is well-distributed and balanced, rather than relying heavily on a few dominant classes.
-*   **Sparse Misclassifications:** The pale, light blue off-diagonal spots indicate occasional misclassifications. Because there are no heavily darkened off-diagonal clusters, the EfficientNet-B0 model does not exhibit systemic failure modes or extreme bias toward guessing a single incorrect dish.
-*   **Expected Visual Ambiguity:** The scattered off-diagonal noise reflects the inherent difficulty of the Food-101 dataset, where dishes with similar plating, textures, and colors (e.g., chocolate cake versus chocolate mousse) naturally share visual features.
+*   **A strong diagonal:** The dark blue line running from top-left to bottom-right means the model gets the right answer for most of the 101 dishes. That matches the 82.68% validation accuracy.
+*   **Normalized scale:** The matrix runs from 0.0 to 1.0 and shows the share of each dish's images that were classified correctly. The diagonal is consistently dark, so the accuracy looks fairly evenly spread, not carried by a few easy dishes.
+*   **Scattered mistakes:** The pale spots off the diagonal are occasional misclassifications. I don't see any dark off-diagonal clusters, so the model doesn't seem to keep guessing one particular wrong dish.
+*   **Dishes that look alike:** The scattered noise is what I'd expect from Food-101, where dishes with similar plating, textures, and colors (chocolate cake versus chocolate mousse, for example) share a lot visually.
 
 ---
 
@@ -227,11 +240,9 @@ Food-Sight/
 │   └── utilities.py          # Preprocessing, top-k extraction, state logic
 ├── assets/
 │   ├── docImages/            # Documentation images, including the confusion matrix
-│   ├── samples/              # One JPG sample for each supported class
-│   └── silc_readme.md        # README from the earlier SILC project
+│   └── samples/              # One JPG sample for each supported class
 ├── requirements.txt          # Runtime dependencies
 ├── pyproject.toml            # Project metadata and dependency constraints
-├── model prob reaching.txt   # Notes on softmax floating-point behavior
 ├── LICENSE
 └── README.md
 ```
@@ -242,9 +253,9 @@ Food-Sight/
 
 ### Requirements
 
-- Python 3.11 or newer.
-- A CPU capable of running TensorFlow inference.
-- Enough disk space for the TensorFlow runtime and the saved model.
+- Python 3.11 or newer
+- A CPU that can run TensorFlow inference
+- Enough disk space for the TensorFlow runtime and the saved model
 
 ### Install
 
@@ -256,7 +267,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-The dependency set includes Streamlit, Pillow, TensorFlow CPU, and NumPy. The project metadata in `pyproject.toml` also requires Python `>=3.11`.
+The dependencies are Streamlit, Pillow, TensorFlow CPU, and NumPy. The project metadata in `pyproject.toml` also asks for Python `>=3.11`.
 
 ### Run
 
@@ -264,15 +275,15 @@ The dependency set includes Streamlit, Pillow, TensorFlow CPU, and NumPy. The pr
 .venv/bin/streamlit run app.py --server.address=0.0.0.0 --server.port=8501
 ```
 
-Open [http://localhost:8501](http://localhost:8501) in a browser. On first load, Streamlit loads and caches the Keras model. CPU-only inference can take a little longer on the first prediction while TensorFlow initializes.
+Then open [http://localhost:8501](http://localhost:8501) in your browser. The first time, Streamlit loads and caches the Keras model, and TensorFlow needs a moment to warm up, so the first prediction on a CPU can feel a little slow.
 
 ---
 
 ## API and Inference Notes
 
-FoodSight is currently a Streamlit application, not a separate REST API. Predictions are made inside the Streamlit process when the user presses **Identify This**.
+FoodSight is a Streamlit app, not a separate REST API. Predictions happen inside the Streamlit process when you press **Identify This**.
 
-The core inference call is conceptually:
+The core of the inference code looks like this:
 
 ```python
 processed_image = utilities.preprocess_image(image)
@@ -280,44 +291,46 @@ predictions = model.predict(processed_image)
 top_predictions = utilities.top_k_preds(predictions)
 ```
 
-`top_k_preds()` returns five dictionaries with a `label` and a raw `confidence` value. The UI then keeps the raw value as `Probability` and converts a copy to a percentage for presentation.
+`top_k_preds()` returns five dictionaries, each with a `label` and a raw `confidence` value. The UI keeps the raw value as `Probability` and converts a copy to a percentage for display.
 
 ---
 
 ## Limitations
 
-- **Fixed label set:** The classifier can only choose among 101 Food-101 categories. It cannot reliably identify a dish outside those categories.
-- **Best-guess behavior:** Softmax always distributes scores across the known classes; a high score is not proof that the image belongs to the dataset.
-- **Visual ambiguity:** Dishes with similar colors, textures, or plating can be difficult to distinguish, such as chocolate cake versus chocolate mousse.
-- **Framing and image quality:** Heavy cropping, poor lighting, packaging, clutter, or a dish occupying only a small part of the image can reduce performance.
-- **Resize information loss:** Every image is resized to 224 x 224, so very small details may disappear or become distorted.
-- **Confidence calibration:** The displayed score is the model's softmax output, not a formally calibrated probability of correctness.
+FoodSight isn't perfect, and I'd rather you know where it struggles:
+
+- **Fixed set of dishes:** It can only choose among the 101 Food-101 categories, so it can't reliably identify a dish outside them.
+- **Always a best guess:** Softmax spreads its scores across the dishes it knows, so a high score isn't proof that the photo belongs to the dataset.
+- **Dishes that look alike:** Similar colors, textures, or plating can be hard to tell apart, like chocolate cake and chocolate mousse.
+- **Framing and photo quality:** Heavy cropping, poor lighting, packaging, clutter, or a dish that fills only a small part of the photo can all hurt accuracy.
+- **Resizing loses detail:** Every image is shrunk to 224 x 224, so very small details can disappear or get distorted.
+- **Confidence isn't calibrated:** The score is the model's softmax output, not a carefully calibrated chance of being correct. A score of 90% doesn't mean it's right 90% of the time.
 
 ---
 
 ## Good Input Practices
 
-To give FoodSight best possible chances to see what's on your plate:
+To give FoodSight its best chance of seeing what's on your plate:
 
-- Keep the dish as the main subject and place it near the center.
-- Use clear, well-lit images with enough visible surface area.
-- Avoid strong obstructions such as hands, wrappers, or utensils covering most of the food.
-- Choose an angle that exposes the dish's characteristic shape and texture.
-- Treat `CONFUSED` and `UNCERTAIN` results as prompts to inspect the top-five alternatives, not as definitive identifications.
+- Keep the dish as the main subject, near the center.
+- Use a clear, well-lit photo where plenty of the dish is visible.
+- Avoid hands, wrappers, or utensils covering most of the food.
+- Pick an angle that shows the dish's usual shape and texture.
+- If you get `CONFUSED` or `UNCERTAIN`, look at the top five alternatives instead of treating the first guess as the answer.
 
 ---
 
-## Acknowledgement
+## Acknowledgements
 
-FoodSight was made possible by the following open-source projects, datasets, and resources:
+FoodSight wouldn't exist without these open-source projects, datasets, and resources:
 
-- The [Food-101 dataset](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/) by Lukas Bossard, Matthieu Guillaumin, and Luc Van Gool, which provides the 101 food categories and images used for training and evaluation.
-- [TensorFlow Datasets](https://www.tensorflow.org/datasets), used to obtain and prepare the Food-101 data during the training workflow.
-- [TensorFlow](https://www.tensorflow.org/) and [Keras](https://keras.io/), which provide the model-training and inference frameworks.
-- [EfficientNet](https://arxiv.org/abs/1905.11946), specifically EfficientNet-B0, which provides the image-classification backbone used by FoodSight.
-- [Streamlit](https://streamlit.io/), which powers the interactive web application and its deployment workflow.
-- [Pillow](https://python-pillow.org/) and [NumPy](https://numpy.org/), which support image loading and input preparation.
-- [DeepFood](https://www.researchgate.net/publication/304163308_DeepFood_Deep_Learning-Based_Food_Image_Recognition_for_Computer-Aided_Dietary_Assessment), whose reported results provided a reference point for the project.
+- The [Food-101 dataset](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/) by Lukas Bossard, Matthieu Guillaumin, and Luc Van Gool, which provides the 101 food categories and the images I used for training and evaluation.
+- [TensorFlow Datasets](https://www.tensorflow.org/datasets), which I used to get and prepare the Food-101 data for training.
+- [TensorFlow](https://www.tensorflow.org/) and [Keras](https://keras.io/), for training and running the model.
+- [EfficientNet](https://arxiv.org/abs/1905.11946), specifically EfficientNet-B0, the image-classification backbone behind FoodSight.
+- [Streamlit](https://streamlit.io/), which powers the web app and its deployment.
+- [Pillow](https://python-pillow.org/) and [NumPy](https://numpy.org/), for loading images and preparing inputs.
+- [DeepFood](https://www.researchgate.net/publication/304163308_DeepFood_Deep_Learning-Based_Food_Image_Recognition_for_Computer-Aided_Dietary_Assessment), whose reported results gave me a target to aim for.
 
 ---
 
