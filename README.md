@@ -109,6 +109,22 @@ Here are the current rules:
 
 These are display rules I chose for the app, **not** a guarantee that the model is right. The model learned to choose among 101 dishes, and it has no "I don't know this food" option. So a photo of a dish it hasn't learned, a badly framed photo, or a dish that looks a lot like another one will **still** get a best guess.
 
+### Why `0.35` and `0.15`?
+
+These two numbers are rules of thumb. I chose them as sensible starting points, based on common suggestions, and I didn't tune them on data. Here's why they make sense to me.
+
+**Why does the top probability need to be at least `0.35`?**
+There are 101 dishes, so a model that was just guessing would give each one about 1% (`1/101`). A top score of `0.35` is roughly 35 times that, which means the model is putting more than a third of its confidence on a single dish. Below that, its confidence is spread across several dishes, so I call the result `CONFUSED`. I didn't use `0.5` ("more likely than not") because with 101 dishes, many of which look alike, that felt too strict for a first guess.
+
+**Why does the margin need to be at least `0.15`?**
+The margin is the gap between the first and second guess. A high top score can still be shaky if the runner-up is almost as high. For example, `0.40` against `0.30` has a top score that passes, but a margin of only `0.10`, so the result is `UNCERTAIN` and worth a second look. Requiring a lead of at least 15 percentage points means the runner-up can't be a close contender.
+
+**Why use both?**
+Each one catches a different problem. The top probability tells me whether the model is confident at all. The margin tells me whether it's torn between two dishes. Together they separate "one clear winner" from "a weak guess" and "two close candidates".
+
+**Are they perfect?**
+No. The scores come from softmax, which isn't calibrated, so `0.35` doesn't mean a 35% chance of being right. The thresholds are a simple way to show you when to be careful, not a guarantee. If I wanted to tune them, I'd run the model on the validation images and check how often each state is actually right, then adjust the numbers.
+
 ---
 
 ## Why Can Softmax Show `1.0` and Tiny Other Values?
@@ -240,9 +256,11 @@ Food-Sight/
 │   └── utilities.py          # Preprocessing, top-k extraction, state logic
 ├── assets/
 │   ├── docImages/            # Documentation images, including the confusion matrix
-│   └── samples/              # One JPG sample for each supported class
+│   ├── samples/              # One JPG sample for each supported class
+│   └── silc_readme.md        # README from the earlier SILC project
 ├── requirements.txt          # Runtime dependencies
 ├── pyproject.toml            # Project metadata and dependency constraints
+├── model prob reaching.txt   # Notes on softmax floating-point behavior
 ├── LICENSE
 └── README.md
 ```
