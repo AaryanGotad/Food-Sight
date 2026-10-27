@@ -207,7 +207,7 @@ For the second stage, I unfroze the base model and allowed up to 100 epochs. Tra
 
 ### Fine-Tuning Results
 
-I measured these results on the 15% validation subset I used during training, not on the complete Food-101 validation split. That's the same subset the checkpoints and early stopping watched, so treat the numbers as an encouraging sign, not a final benchmark.
+I measured these results on the complete Food-101 validation split, all 25,250 images. The model never trained on any of them, but 15% of them (3,788 images) were also the validation data I watched during training, for checkpoints and early stopping. So these numbers are a good sign of how it does on new photos, but it isn't a completely untouched test set.
 
 | Metric | Score |
 |---|---:|
@@ -222,6 +222,8 @@ That's 5.28 percentage points above the 77.4% top-1 accuracy reported by [DeepFo
 ### Confusion Matrix
 
 The confusion matrix shows how the model does on each dish. Dishes appear in the same order as [`utils/class_names.txt`](utils/class_names.txt).
+
+It’s computed on the same 25,250 validation images as the metrics above.
 
 ![FoodSight confusion matrix](assets/docImages/confusion_matrix.png)
 
