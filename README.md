@@ -180,15 +180,6 @@ The model predicts 101 dishes, including:
 
 The full list lives in [`utils/class_names.txt`](utils/class_names.txt), in the same order as the model's outputs. Please don't rename, reorder, or delete entries. If you do, perfectly good predictions will show the wrong dish name.
 
-The model file is [`model/FoodSight.keras`](model/FoodSight.keras). I inspected the saved file, and here's what it contains:
-
-| Property | Value |
-|---|---|
-| Input shape | `(None, 224, 224, 3)` |
-| Output shape | `(None, 101)` |
-| Final activation | Softmax |
-| Runtime | TensorFlow / Keras |
-
 ### Training Setup
 
 I trained the model in two stages. In the first, I kept the pretrained EfficientNet-B0 frozen and trained only a new classification head on top of it. In the second, I unfroze it and fine-tuned the whole thing. A few terms might be new, so I explain them right after the details.
